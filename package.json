@@ -1,0 +1,64 @@
+{
+  "name": "dsh-ue-bridge",
+  "version": "0.4.0",
+  "description": "Bind an Unreal Engine project and drive Build / Open Editor / Stop from the dsh Web composer dock.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-ue-bridge": "bin/cli.mjs"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "bin",
+    "tools",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test/smoke.mjs && node test/install.mjs",
+    "test:smoke": "node test/smoke.mjs",
+    "test:install": "node test/install.mjs"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.1.2-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "unreal-engine",
+    "ue5",
+    "uproject"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JUSTDOITzhw/dsh-ue-bridge.git"
+  },
+  "homepage": "https://github.com/JUSTDOITzhw/dsh-ue-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/JUSTDOITzhw/dsh-ue-bridge/issues"
+  }
+}

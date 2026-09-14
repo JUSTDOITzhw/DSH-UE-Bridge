@@ -1,0 +1,11 @@
+# dsh-ue-bridge bundle patch.
+#
+# Inserted as a profile bundle layer over dsh-base. The row is a bare dual-face
+# plugin referenced by package name: the node half (exports ".") runs in the
+# host process and registers the four /api/ue-bridge routes on ctx.webServer,
+# while the `dsh.client` declaration in package.json makes the browser half
+# (exports "./client") load in the Web GUI and mount one row into the
+# `conversation.composer.dock` slot.
+- insert:
+    - id: ue-bridge
+      name: dsh-ue-bridge

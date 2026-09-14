@@ -1,0 +1,18 @@
+# Runtime noise
+node_modules/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Installer backups: `<file>.bak-YYYYMMDDHHMMSS`
+*.bak-*
+
+# Local override: a pinned scan root for this machine only
+cordis.local.yml
+
+# Editor / OS droppings
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
