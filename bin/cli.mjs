@@ -36,7 +36,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -410,10 +410,18 @@ function deploy(source, target, options) {
     /* Trees are replaced, not merged: dropping a file upstream has to drop it
        here too, or a stale module keeps shadowing the new one. */
     if (DEPLOY_TREES.has(name) && linkExists(to)) rmSync(to, { recursive: true, force: true })
+    /* Skip `node_modules` relative to the tree being copied — never by looking for
+       the substring in the whole path. Installed through npx, npm puts this package
+       at `_npx/<hash>/node_modules/<name>`, so a substring test rejects every entry
+       and deploys an empty folder while still reporting success. */
+    const copyRoot = resolve(from)
     cpSync(from, to, {
       recursive: true,
       force: true,
-      filter: (entry) => !entry.includes(`${sep}node_modules${sep}`) && !entry.endsWith(`${sep}node_modules`),
+      filter: (entry) => {
+        const rel = relative(copyRoot, resolve(entry))
+        return rel === '' || !rel.split(sep).includes('node_modules')
+      },
     })
   }
 }

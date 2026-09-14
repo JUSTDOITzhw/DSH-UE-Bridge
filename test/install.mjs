@@ -11,9 +11,9 @@
  * registration path to the documented fallback (link dependency + bundle layer +
  * node_modules link) instead of letting the machine decide which branch runs.
  */
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, sep } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -270,6 +270,46 @@ check('the manifest was backed up before being rewritten',
 
   cleanup(decoy.home)
   cleanup(preferred.home)
+}
+
+/* ------------------------------------------------------------------ *
+ * running from a node_modules path (the npx and global-install layout)
+ * ------------------------------------------------------------------ */
+
+/* Regression: the tree copy used to skip anything whose absolute path merely
+   *contained* a `node_modules` segment. npm installs this package under
+   `_npx/<hash>/node_modules/<name>`, so when the installer ran from where npx
+   actually put it, every entry was filtered out: the target was left empty while
+   the run still reported a successful deploy. Stage the package at that shape and
+   insist the tree really lands. */
+{
+  const staged = mkdtempSync(join(tmpdir(), 'ue-bridge-npx-'))
+  const nestedRoot = join(staged, '_npx', 'deadbeef', 'node_modules', 'dsh-ue-bridge')
+  mkdirSync(dirname(nestedRoot), { recursive: true })
+  cpSync(root, nestedRoot, {
+    recursive: true,
+    filter: (entry) => {
+      const rel = entry.slice(root.length)
+      return rel === '' || !rel.split(sep).includes('node_modules')
+    },
+  })
+  check('staged source sits under a node_modules path', nestedRoot.includes(`${sep}node_modules${sep}`))
+
+  const home = makeDshHome()
+  const result = spawnSync(process.execPath, [join(nestedRoot, 'bin', 'cli.mjs'), 'install', '--dsh-home', home.home, '--profile', 'web'], {
+    encoding: 'utf8',
+    env: bareEnv(),
+    windowsHide: true,
+  })
+  const out = `${result.stdout ?? ''}${result.stderr ?? ''}`
+  check('installing from a node_modules path exits 0', result.status === 0, `exit ${result.status}`)
+  check('the host half really landed', existsSync(join(home.pluginDir, 'index.js')))
+  check('the browser half really landed', existsSync(join(home.pluginDir, 'lib', 'client.js')))
+  check('the installer really landed', existsSync(join(home.pluginDir, 'bin', 'cli.mjs')))
+  check('the deployed tree loads from where it now lives', out.includes('宿主半侧可加载'), out.includes('宿主半侧加载失败') ? 'load failed' : '')
+
+  cleanup(staged)
+  cleanup(home.home)
 }
 
 console.log(`\n${failures === 0 ? 'all checks passed' : `${failures} check(s) failed`}`)
