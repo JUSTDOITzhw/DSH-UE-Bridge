@@ -1,0 +1,14 @@
+# Normalise line endings in the repository so a checkout on any platform gets
+# working scripts. Git's `core.autocrlf` would otherwise rewrite the LF shebang
+# scripts to CRLF, which breaks tools/install.sh on macOS and Linux.
+* text=auto eol=lf
+
+# Windows batch files genuinely need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary-ish assets are left alone.
+*.png binary
+*.jpg binary
+*.ico binary
+*.tgz binary
