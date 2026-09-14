@@ -228,5 +228,49 @@ check('the manifest was backed up before being rewritten',
   check('installing into a non-dsh directory fails loudly', missingHome.code === 1 && missingHome.out.includes('profile 目录'))
 }
 
+/* ------------------------------------------------------------------ *
+ * --dsh-home must beat the environment's DSH_HOME
+ * ------------------------------------------------------------------ */
+
+/* Regression: the dsh CLI takes its home from the DSH_HOME variable, and
+   `dsh plugin --profile <p> add` edits whichever profile lives in that home. An
+   earlier revision resolved `--dsh-home` for its own layout but never forwarded
+   it to the child process, so the CLI registered into the DEFAULT home while
+   this installer reported success — silently editing a profile the user never
+   named. The decoy home here plays the part of that default home. */
+{
+  const decoy = makeDshHome()
+  const preferred = makeDshHome()
+  /* Deliberately not bareEnv(): this branch is only reachable with the real PATH.
+     On a machine without dsh the same assertions still have to hold through the
+     fallback, so the test is meaningful either way. */
+  const env = { ...process.env, DSH_HOME: decoy.home }
+
+  const installed = run(['install', '--dsh-home', preferred.home, '--profile', 'web'], env)
+  check('installing into a named home exits 0', installed.code === 0, `exit ${installed.code}`)
+
+  const got = readJson(preferred.manifestPath)
+  check('--dsh-home wins over DSH_HOME in the environment',
+    got.dsh?.profile?.bundles?.includes('dsh-ue-bridge') === true,
+    JSON.stringify(got.dsh?.profile?.bundles))
+  const linkValue = (got.dependencies?.['dsh-ue-bridge'] ?? '').replace(/\\/gu, '/')
+  check('the link dependency points at the requested home',
+    linkValue === `link:${preferred.pluginDir}`.replace(/\\/gu, '/'),
+    linkValue)
+
+  const untouched = readJson(decoy.manifestPath)
+  check('the home named only by the environment keeps its bundle list',
+    untouched.dsh?.profile?.bundles?.join(',') === 'dsh-base',
+    JSON.stringify(untouched.dsh?.profile?.bundles))
+  check('no dependency was written into that other home',
+    untouched.dependencies?.['dsh-ue-bridge'] === undefined)
+  check('no plugin directory was written into that other home', !existsSync(decoy.pluginDir))
+  check('no node_modules link was written into that other home',
+    !existsSync(join(decoy.profileDir, 'node_modules', 'dsh-ue-bridge')))
+
+  cleanup(decoy.home)
+  cleanup(preferred.home)
+}
+
 console.log(`\n${failures === 0 ? 'all checks passed' : `${failures} check(s) failed`}`)
 process.exit(failures === 0 ? 0 : 1)

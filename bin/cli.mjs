@@ -313,7 +313,7 @@ function removePatchBlock(file, options) {
  * Profile registration
  * ------------------------------------------------------------------ */
 
-function register(profile, profileDir, pluginDir, options) {
+function register(profile, profileDir, pluginDir, options, dshHome) {
   const manifestPath = join(profileDir, 'package.json')
   const manifest = existsSync(manifestPath) ? readJson(manifestPath) : {}
 
@@ -324,12 +324,19 @@ function register(profile, profileDir, pluginDir, options) {
       cwd: profileDir,
       stdio: 'inherit',
       shell: process.platform === 'win32',
+      /* The CLI takes its home from the environment, never from `--dsh-home`.
+         Without this it happily edits the DEFAULT profile instead of the one we
+         were pointed at — silently, and with exit code 0. */
+      env: { ...process.env, DSH_HOME: dshHome },
     })
-    if (result.status === 0) {
+    /* Exit code 0 is not proof it landed where we wanted: read the manifest back. */
+    const after = existsSync(manifestPath) ? readJson(manifestPath) : {}
+    if (result.status === 0 && after.dsh?.profile?.bundles?.includes(PLUGIN_NAME) === true) {
       ok('已通过官方 CLI 注册')
       return 'cli'
     }
-    warn('官方 CLI 注册失败，回退为直接改写 profile 清单')
+    if (result.status === 0) warn(`官方 CLI 退出码为 0，但 ${manifestPath} 里没有登记；改用直接改写`)
+    else warn('官方 CLI 注册失败，回退为直接改写 profile 清单')
   } else if (cli === '') {
     warn('未在 PATH 上找到 dsh CLI，直接改写 profile 清单')
   }
@@ -512,7 +519,7 @@ function commandInstall(options) {
   deploy(source, paths.pluginDir, options)
   ok(options.dryRun ? '（dry-run）' : `已部署到 ${paths.pluginDir}`)
 
-  if (options.register) register(options.profile, paths.profileDir, paths.pluginDir, options)
+  if (options.register) register(options.profile, paths.profileDir, paths.pluginDir, options, paths.dshHome)
   else warn('按要求跳过了注册；需要手工把插件加入 profile')
 
   if (options.roots !== '' || options.engine !== '') {

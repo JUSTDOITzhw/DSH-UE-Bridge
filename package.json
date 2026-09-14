@@ -1,6 +1,6 @@
 {
   "name": "dsh-ue-bridge",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Bind an Unreal Engine project and drive Build / Open Editor / Stop from the dsh Web composer dock.",
   "type": "module",
   "main": "index.js",
